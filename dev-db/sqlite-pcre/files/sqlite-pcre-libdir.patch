@@ -1,0 +1,13 @@
+diff --git a/Makefile b/Makefile
+index 927d0c4..4475694 100644
+--- a/Makefile
++++ b/Makefile
+@@ -11,7 +11,7 @@ pcre.so : pcre.c
+ 	${CC} -shared -o $@ ${CFLAGS} -W -Werror pcre.c ${LIBS} -Wl,-z,defs
+ 
+ install : pcre.so
+-	${INSTALL} -pD -m755 pcre.so ${DESTDIR}${prefix}/lib/sqlite3/pcre.so
++	${INSTALL} -pD -m755 pcre.so ${DESTDIR}${prefix}/$(LIBDIR)/sqlite3/pcre.so
+ 
+ dist : clean
+ 	mkdir sqlite3-pcre-${VERSION}
