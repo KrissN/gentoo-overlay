@@ -1,0 +1,12 @@
+diff --git a/monitoring/main.go b/monitoring/main.go
+index 3799ed4d4..7470de211 100644
+--- a/monitoring/main.go
++++ b/monitoring/main.go
+@@ -1,5 +1,5 @@
+-//go:generate go build -o /tmp/monitoring-generator
+-//go:generate /tmp/monitoring-generator
++//go:generate go build -o ${T}/monitoring-generator
++//go:generate ${T}/monitoring-generator
+ package main
+ 
+ import (
