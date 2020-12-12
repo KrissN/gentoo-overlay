@@ -1,0 +1,16 @@
+Sourcegraph by default uses musl in its docker images. Use glibc
+instead.
+
+diff --git a/dev/libsqlite3-pcre/go-build-args.sh b/dev/libsqlite3-pcre/go-build-args.sh
+index fd21785c2..a101f376c 100755
+--- a/dev/libsqlite3-pcre/go-build-args.sh
++++ b/dev/libsqlite3-pcre/go-build-args.sh
+@@ -26,7 +26,7 @@ case "$OSTYPE" in
+     ;;
+
+   linux*)
+-    muslGcc="musl-gcc"
++    muslGcc="gcc"
+     if ! command -v "$muslGcc" >/dev/null 2>&1; then
+       echo "Couldn't find musl C compiler $muslGcc. Install the musl-tools package (e.g. on Ubuntu, run 'apt-get install musl-tools')."
+       exit 1

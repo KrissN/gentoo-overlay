@@ -1,0 +1,18 @@
+diff --git a/cmd/server/build.sh b/cmd/server/build.sh
+index 1c540285c..a36bafcd7 100755
+--- a/cmd/server/build.sh
++++ b/cmd/server/build.sh
+@@ -8,13 +8,6 @@ set -eux
+ [ -n "$VERSION" ]
+ [ -n "$IMAGE" ]
+ 
+-OUTPUT=$(mktemp -d -t sgserver_XXXXXXX)
+-export OUTPUT
+-cleanup() {
+-  rm -rf "$OUTPUT"
+-}
+-trap cleanup EXIT
+-
+ parallel_run() {
+   ./dev/ci/parallel_run.sh "$@"
+ }

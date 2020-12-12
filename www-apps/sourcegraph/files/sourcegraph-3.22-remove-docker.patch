@@ -1,0 +1,18 @@
+Remove building of docker images.
+
+---
+diff --git a/cmd/server/build.sh b/cmd/server/build.sh
+index 1c540285c..e62d49432 100755
+--- a/cmd/server/build.sh
++++ b/cmd/server/build.sh
+@@ -99,10 +92,3 @@ IMAGE=sourcegraph/grafana:server CACHE=true docker-images/grafana/build.sh
+
+ echo "--- jaeger-all-in-one binary"
+ cmd/server/jaeger.sh
+-
+-echo "--- docker build"
+-docker build -f cmd/server/Dockerfile -t "$IMAGE" "$OUTPUT" \
+-  --progress=plain \
+-  --build-arg COMMIT_SHA \
+-  --build-arg DATE \
+-  --build-arg VERSION

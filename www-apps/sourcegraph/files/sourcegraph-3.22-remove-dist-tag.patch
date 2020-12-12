@@ -1,0 +1,12 @@
+diff --git a/cmd/server/go-build.sh b/cmd/server/go-build.sh
+index 5b1d4a003..5ec2b58c7 100755
+--- a/cmd/server/go-build.sh
++++ b/cmd/server/go-build.sh
+@@ -15,6 +15,6 @@ else
+     -ldflags "-X github.com/sourcegraph/sourcegraph/internal/version.version=$VERSION -X github.com/sourcegraph/sourcegraph/internal/version.timestamp=$(date +%s)" \
+     -buildmode exe \
+     -installsuffix netgo \
+-    -tags "dist netgo" \
++    -tags "netgo" \
+     -o "$BINDIR/$BASENAME" "$PACKAGE"
+ fi
