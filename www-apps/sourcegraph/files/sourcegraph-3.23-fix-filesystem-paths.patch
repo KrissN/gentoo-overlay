@@ -1,0 +1,202 @@
+The filesystem inside the Sourcegraph docker image is all over the place
+- files are placed in random directories.
+
+Unify the paths to follow the FHS standard a bit more. While this is not
+as important inside a container, it will allow running the app without a
+container without it trashing files all over the filesystem.
+
+diff --git a/docker-images/prometheus/prometheus.sh b/docker-images/prometheus/prometheus.sh
+index bedcb7e83..5eed72387 100755
+--- a/docker-images/prometheus/prometheus.sh
++++ b/docker-images/prometheus/prometheus.sh
+@@ -1,13 +1,13 @@
+ #!/bin/sh
+ set -e
+ 
+-CONFIG_FILE=/sg_config_prometheus/prometheus.yml
++CONFIG_FILE=/usr/share/sourcegraph/sg_config_prometheus/prometheus.yml
+ 
+-if [ -e /sg_prometheus_add_ons/prometheus.yml ]; then
+-  CONFIG_FILE=/sg_prometheus_add_ons/prometheus.yml
++if [ -e /usr/share/sourcegraph/sg_prometheus_add_ons/prometheus.yml ]; then
++  CONFIG_FILE=/usr/share/sourcegraph/sg_prometheus_add_ons/prometheus.yml
+ fi
+ 
+-STORAGE_PATH="${STORAGE_PATH:-"/prometheus"}"
++STORAGE_PATH="${STORAGE_PATH:-"/var/lib/sourcegraph/prometheus/"}"
+ 
+ # shellcheck disable=SC2086
+-exec /bin/prometheus --config.file=$CONFIG_FILE --storage.tsdb.path=$STORAGE_PATH --web.enable-admin-api $PROMETHEUS_ADDITIONAL_FLAGS --web.console.libraries=/usr/share/prometheus/console_libraries --web.console.templates=/usr/share/prometheus/consoles --web.enable-lifecycle "$@"
++exec /usr/bin/prometheus --config.file=$CONFIG_FILE --storage.tsdb.path=$STORAGE_PATH --web.enable-admin-api $PROMETHEUS_ADDITIONAL_FLAGS --web.console.libraries=/usr/share/prometheus/console_libraries --web.console.templates=/usr/share/prometheus/consoles --web.enable-lifecycle "$@"
+diff --git a/docker-images/prometheus/cmd/prom-wrapper/cmd.go b/docker-images/prometheus/cmd/prom-wrapper/cmd.go
+index 3369e0faf..78b754566 100644
+--- a/docker-images/prometheus/cmd/prom-wrapper/cmd.go
++++ b/docker-images/prometheus/cmd/prom-wrapper/cmd.go
+@@ -23,7 +23,7 @@ func NewPrometheusCmd(promArgs []string, promPort string) *exec.Cmd {
+ 	promFlags := []string{
+ 		fmt.Sprintf("--web.listen-address=0.0.0.0:%s", promPort),
+ 	}
+-	cmd := exec.Command("/prometheus.sh", append(promFlags, promArgs...)...)
++	cmd := exec.Command("/usr/libexec/sourcegraph/prometheus.sh", append(promFlags, promArgs...)...)
+ 	cmd.Env = os.Environ()
+ 	cmd.Stderr = os.Stderr
+ 	cmd.Stdout = os.Stdout
+@@ -31,7 +31,7 @@ func NewPrometheusCmd(promArgs []string, promPort string) *exec.Cmd {
+ }
+ 
+ func NewAlertmanagerCmd(configPath string) *exec.Cmd {
+-	cmd := exec.Command("/alertmanager.sh",
++	cmd := exec.Command("/usr/libexec/sourcegraph/alertmanager.sh",
+ 		fmt.Sprintf("--config.file=%s", configPath),
+ 		fmt.Sprintf("--web.route-prefix=/%s", alertmanagerPathPrefix))
+ 	// disable clustering unless otherwise configured - it is enabled by default, but
+diff --git a/docker-images/prometheus/alertmanager.sh b/docker-images/prometheus/alertmanager.sh
+index 44fe2e4cc..920a7630f 100755
+--- a/docker-images/prometheus/alertmanager.sh
++++ b/docker-images/prometheus/alertmanager.sh
+@@ -2,4 +2,4 @@
+ set -e
+ 
+ # shellcheck disable=SC2086
+-exec /bin/alertmanager --storage.path=/alertmanager --data.retention=168h $ALERTMANAGER_ADDITIONAL_FLAGS "$@"
++exec /usr/bin/alertmanager --storage.path=/var/lib/sourcegraph/alertmanager --data.retention=168h $ALERTMANAGER_ADDITIONAL_FLAGS "$@"
+diff --git a/docker-images/prometheus/config/prometheus.yml b/docker-images/prometheus/config/prometheus.yml
+index e22ce03f2..9ddc64972 100755
+--- a/docker-images/prometheus/config/prometheus.yml
++++ b/docker-images/prometheus/config/prometheus.yml
+@@ -10,13 +10,13 @@ alerting:
+     # bundled alertmanager, started by prom-wrapper
+     - static_configs:
+         - targets: ['127.0.0.1:9093']
+-      path_prefix: /alertmanager
++      path_prefix: /var/lib/sourcegraph/alertmanager
+     # add more alertmanagers here
+ 
+ # Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+ rule_files:
+   - '*_rules.yml'
+-  - '/sg_prometheus_add_ons/*_rules.yml'
++  - '/usr/share/sourcegraph/sg_prometheus_add_ons/*_rules.yml'
+ 
+ # Configure targets to scrape
+ scrape_configs:
+@@ -25,11 +25,11 @@ scrape_configs:
+     static_configs:
+       - targets: ['127.0.0.1:9092']
+   - job_name: 'builtin-alertmanager'
+-    metrics_path: /alertmanager/metrics
++    metrics_path: /var/lib/sourcegraph/alertmanager/metrics
+     static_configs:
+       - targets: ['127.0.0.1:9093']
+ 
+   - job_name: 'sg'
+     file_sd_configs:
+       - files:
+-          - '/sg_prometheus_add_ons/*_targets.yml'
++          - '/usr/share/sourcegraph/sg_prometheus_add_ons/*_targets.yml'
+diff --git a/cmd/server/shared/monitoring.go b/cmd/server/shared/monitoring.go
+index c8745de71..48ba597b3 100644
+--- a/cmd/server/shared/monitoring.go
++++ b/cmd/server/shared/monitoring.go
+@@ -6,11 +6,11 @@ import (
+ 	"github.com/inconshreveable/log15"
+ )
+ 
+-const prometheusProcLine = `prometheus: env STORAGE_PATH=/var/opt/sourcegraph/prometheus /bin/prom-wrapper >> /var/opt/sourcegraph/prometheus.log 2>&1`
++const prometheusProcLine = `prometheus: env STORAGE_PATH=/var/lib/sourcegraph/prometheus /usr/bin/prom-wrapper >> /var/log/sourcegraph/prometheus.log 2>&1`
+ 
+-const grafanaProcLine = `grafana: /usr/share/grafana/bin/grafana-server -config /sg_config_grafana/grafana-single-container.ini -homepath /usr/share/grafana >> /var/opt/sourcegraph/grafana.log 2>&1`
++const grafanaProcLine = `grafana: /usr/bin/grafana-server -config /usr/share/sourcegraph/sg_config_grafana/grafana-single-container.ini -homepath /usr/share/grafana >> /var/log/sourcegraph/grafana.log 2>&1`
+ 
+-const jaegerProcLine = `jaeger: env QUERY_BASE_PATH=/-/debug/jaeger jaeger --memory.max-traces=20000 >> /var/opt/sourcegraph/jaeger.log 2>&1`
++const jaegerProcLine = `jaeger: env QUERY_BASE_PATH=/-/debug/jaeger jaeger --memory.max-traces=20000 >> /var/log/sourcegraph/jaeger.log 2>&1`
+ 
+ func maybeMonitoring() ([]string, error) {
+ 	if os.Getenv("DISABLE_OBSERVABILITY") != "" {
+diff --git a/docker-images/grafana/config/grafana-single-container.ini b/docker-images/grafana/config/grafana-single-container.ini
+index dda984542..d969b0f04 100644
+--- a/docker-images/grafana/config/grafana-single-container.ini
++++ b/docker-images/grafana/config/grafana-single-container.ini
+@@ -12,19 +12,19 @@
+ #################################### Paths ####################################
+ [paths]
+ # Path to where grafana can store temp files, sessions, and the sqlite3 db (if that is used)
+-data = /var/opt/sourcegraph/grafana
++data = /var/lib/sourcegraph/grafana
+ 
+ # Temporary files in `data` directory older than given duration will be removed
+ ;temp_data_lifetime = 24h
+ 
+ # Directory where grafana can store logs
+-logs = /var/opt/sourcegraph/grafana/logs
++logs = /var/lib/sourcegraph/grafana/logs
+ 
+ # Directory where grafana will automatically scan and look for plugins
+-plugins = /var/opt/sourcegraph/grafana/plugins
++plugins = /var/lib/sourcegraph/grafana/plugins
+ 
+ # folder that contains provisioning config files that grafana will apply on startup and while running.
+-provisioning = /sg_config_grafana/provisioning
++provisioning = /usr/share/sourcegraph/sg_config_grafana/provisioning
+ 
+ #################################### Server ####################################
+ [server]
+diff --git a/docker-images/grafana/config/provisioning/dashboards/sourcegraph.yaml b/docker-images/grafana/config/provisioning/dashboards/sourcegraph.yaml
+index 252d96ef9..7ecf1597d 100644
+--- a/docker-images/grafana/config/provisioning/dashboards/sourcegraph.yaml
++++ b/docker-images/grafana/config/provisioning/dashboards/sourcegraph.yaml
+@@ -6,16 +6,16 @@ providers:
+     folder: ''
+     type: file
+     options:
+-      path: /sg_config_grafana/provisioning/dashboards/sourcegraph
++      path: /usr/share/sourcegraph/sg_config_grafana/provisioning/dashboards/sourcegraph
+   - name: 'sourcegraph_internal'
+     orgId: 1
+     folder: 'Sourcegraph Internal'
+     type: file
+     options:
+-      path: /sg_config_grafana/provisioning/dashboards/sourcegraph_internal
++      path: /usr/share/sourcegraph/sg_config_grafana/provisioning/dashboards/sourcegraph_internal
+   - name: 'sourcegraph_additional'
+     orgId: 1
+     folder: ''
+     type: file
+     options:
+-      path: /sg_grafana_additional_dashboards
++      path: /usr/share/sourcegraph/sg_grafana_additional_dashboards
+diff --git a/cmd/server/shared/minio.go b/cmd/server/shared/minio.go
+index c626d27ad..83838a80a 100644
+--- a/cmd/server/shared/minio.go
++++ b/cmd/server/shared/minio.go
+@@ -23,6 +23,6 @@ func maybeMinio() []string {
+ 
+ 	// Configure MinIO service
+ 	dataDir := filepath.Join(os.Getenv("DATA_DIR"), "minio")
+-	procline := fmt.Sprintf(`minio: /usr/local/bin/minio server %s >> /var/opt/sourcegraph/minio.log 2>&1`, dataDir)
++	procline := fmt.Sprintf(`minio: /usr/bin/minio server %s >> /var/log/sourcegraph/minio.log 2>&1`, dataDir)
+ 	return []string{procline}
+ }
+diff --git a/cmd/server/shared/globals.go b/cmd/server/shared/globals.go
+index 5511f516d..a1dcd608e 100644
+--- a/cmd/server/shared/globals.go
++++ b/cmd/server/shared/globals.go
+@@ -29,4 +29,4 @@ var ProcfileAdditions []string
+ 
+ // DataDir is the root directory for storing persistent data. It should NOT be modified by any
+ // external package.
+-var DataDir = SetDefaultEnv("DATA_DIR", "/var/opt/sourcegraph")
++var DataDir = SetDefaultEnv("DATA_DIR", "/var/lib/sourcegraph")
+diff --git a/docker-images/prometheus/cmd/prom-wrapper/main.go b/docker-images/prometheus/cmd/prom-wrapper/main.go
+index b61120b18..596a62d3a 100644
+--- a/docker-images/prometheus/cmd/prom-wrapper/main.go
++++ b/docker-images/prometheus/cmd/prom-wrapper/main.go
+@@ -29,7 +29,7 @@ var (
+ 	prometheusPort = env.Get("PROMETHEUS_INTERNAL_PORT", "9092", "internal Prometheus port")
+ 
+ 	alertmanagerPort          = env.Get("ALERTMANAGER_INTERNAL_PORT", "9093", "internal Alertmanager port")
+-	alertmanagerConfigPath    = env.Get("ALERTMANAGER_CONFIG_PATH", "/sg_config_prometheus/alertmanager.yml", "path to alertmanager configuration")
++	alertmanagerConfigPath    = env.Get("ALERTMANAGER_CONFIG_PATH", "/usr/share/sourcegraph/sg_config_prometheus/alertmanager.yml", "path to alertmanager configuration")
+ 	alertmanagerEnableCluster = env.Get("ALERTMANAGER_ENABLE_CLUSTER", "false", "enable alertmanager clustering")
+ )
+ 

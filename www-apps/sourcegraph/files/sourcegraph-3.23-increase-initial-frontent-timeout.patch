@@ -1,0 +1,16 @@
+The default timeout of 15 seconds is not enough in all cases. Double it
+to ensure that initial start-up with an empty database is possible.
+
+diff --git a/internal/conf/client.go b/internal/conf/client.go
+index 79237be8c..3867f0215 100644
+--- a/internal/conf/client.go
++++ b/internal/conf/client.go
+@@ -198,7 +198,7 @@ func (c *client) continuouslyUpdate(optOnlySetByTests *continuousUpdateOptions)
+ 			// This needs to be long enough to allow the frontend to fully migrate the PostgreSQL
+ 			// database in most cases, to avoid log spam when running sourcegraph/server for the
+ 			// first time.
+-			delayBeforeUnreachableLog: 15 * time.Second,
++			delayBeforeUnreachableLog: 30 * time.Second,
+ 			log:                       log.Printf,
+ 			sleep: func() {
+ 				jitter := time.Duration(rand.Int63n(5 * int64(time.Second)))

@@ -1,0 +1,59 @@
+diff --git a/cmd/server/build.sh b/cmd/server/build.sh
+index 1c540285c..a36bafcd7 100755
+--- a/cmd/server/build.sh
++++ b/cmd/server/build.sh
+@@ -8,13 +8,6 @@ set -eux
+ [ -n "$VERSION" ]
+ [ -n "$IMAGE" ]
+ 
+-OUTPUT=$(mktemp -d -t sgserver_XXXXXXX)
+-export OUTPUT
+-cleanup() {
+-  rm -rf "$OUTPUT"
+-}
+-trap cleanup EXIT
+-
+ parallel_run() {
+   ./dev/ci/parallel_run.sh "$@"
+ }
+diff --git a/docker-images/prometheus/build.sh b/docker-images/prometheus/build.sh
+index 944594d46..cf34a64c4 100755
+--- a/docker-images/prometheus/build.sh
++++ b/docker-images/prometheus/build.sh
+@@ -4,13 +4,9 @@ set -ex
+ 
+ cd "$(dirname "${BASH_SOURCE[0]}")"
+ 
+-# We build out of tree to prevent triggering dev watch scripts when we copy go
+-# files.
+-BUILDDIR=$(mktemp -d -t sgdockerbuild_XXXXXXX)
+-cleanup() {
+-  rm -rf "$BUILDDIR"
+-}
+-trap cleanup EXIT
++export BUILDDIR="${OUTPUT}/prometheus"
++
++mkdir -p "${BUILDDIR}"
+ 
+ # Copy assets
+ cp -R . "$BUILDDIR"
+diff --git a/docker-images/grafana/build.sh b/docker-images/grafana/build.sh
+index 935308b7b..1655e090c 100755
+--- a/docker-images/grafana/build.sh
++++ b/docker-images/grafana/build.sh
+@@ -4,13 +4,8 @@ set -ex
+ 
+ cd "$(dirname "${BASH_SOURCE[0]}")"
+ 
+-# We build out of tree to prevent triggering dev watch scripts when we copy go
+-# files.
+-BUILDDIR=$(mktemp -d -t sgdockerbuild_XXXXXXX)
+-cleanup() {
+-  rm -rf "$BUILDDIR"
+-}
+-trap cleanup EXIT
++BUILDDIR="${OUTPUT}/grafana"
++mkdir -p "${BUILDDIR}"
+ 
+ # Copy assets
+ cp -R . "$BUILDDIR"
