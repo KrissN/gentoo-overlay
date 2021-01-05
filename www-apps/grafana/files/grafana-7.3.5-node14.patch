@@ -1,0 +1,31 @@
+From 00d59ec1fc50d8be386188bad6dbe50979e4823f Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Torkel=20=C3=96degaard?= <torkel@grafana.org>
+Date: Wed, 2 Dec 2020 18:18:49 +0100
+Subject: [PATCH] NodeJS: Update to LTS (14) (#29467)
+
+---
+ .drone.yml                             | 276 ++++++++++++-------------
+ Dockerfile                             |   2 +-
+ Dockerfile.ubuntu                      |   2 +-
+ package.json                           |   4 +-
+ scripts/build/ci-build/Dockerfile      |   4 +-
+ scripts/build/ci-build/build-deploy.sh |   2 +-
+ scripts/lib.star                       |   2 +-
+ 7 files changed, 146 insertions(+), 146 deletions(-)
+
+diff --git a/package.json b/package.json
+index 9f7fa18d1dac..0b486f88d25d 100644
+--- a/package.json
++++ b/package.json
+@@ -309,9 +309,9 @@
+     "puppeteer": "node_modules/puppeteer-core"
+   },
+   "engines": {
+-    "node": ">= 12"
++    "node": ">= 14"
+   },
+   "volta": {
+-    "node": "12.19.1"
++    "node": "14.15.1"
+   }
+ }
